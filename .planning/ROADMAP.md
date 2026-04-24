@@ -27,7 +27,14 @@
   3. Gateway, Lobby and Game exchange at least one meaningful request through gRPC generated from `.proto` files.
   4. Architecture documentation explains each entity, main messages and why gRPC + web services satisfy Entrega 1.
   5. A draft SBC report of up to 4 pages contains problem, architecture, chosen requirements, implementation details, challenges and student roles.
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Create Go module, Makefile, protobuf contracts and generated gRPC code.
+- [ ] 01-02-PLAN.md — Implement Lobby and Game gRPC services with in-memory state and correlated logs.
+- [ ] 01-03-PLAN.md — Implement Gateway HTTP JSON web services that call Lobby through gRPC.
+- [ ] 01-04-PLAN.md — Package Gateway, Lobby and Game in Docker Compose with README demo commands.
+- [ ] 01-05-PLAN.md — Write architecture docs, message docs, role placeholders and Entrega 1 report draft.
 
 ### Phase 2: Team Development System
 **Goal**: Nine students can work in parallel without breaking contracts or architecture consistency.  
