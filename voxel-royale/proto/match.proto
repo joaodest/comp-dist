@@ -1,11 +1,17 @@
 syntax = "proto3";
 package match;
 option go_package = "voxel-royale/gen/match";
+
 import "google/api/annotations.proto";
 
 service GameService {
-    // Stream bidirecional para gameplay em tempo real
-    rpc StreamMatch(stream PlayerInput) returns (stream GameState);
+    // O Gateway precisa desta anotação para gerar o código
+    rpc StreamMatch(PlayerInput) returns (GameState) {
+        option (google.api.http) = {
+            post: "/v1/match/stream"
+            body: "*"
+        };
+    }
 }
 
 message PlayerInput {

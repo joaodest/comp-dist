@@ -26,8 +26,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GameServiceClient interface {
-	// Stream bidirecional para gameplay em tempo real
-	StreamMatch(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[PlayerInput, GameState], error)
+	// O Gateway precisa desta anotação para gerar o código
+	StreamMatch(ctx context.Context, in *PlayerInput, opts ...grpc.CallOption) (*GameState, error)
 }
 
 type gameServiceClient struct {
@@ -38,25 +38,22 @@ func NewGameServiceClient(cc grpc.ClientConnInterface) GameServiceClient {
 	return &gameServiceClient{cc}
 }
 
-func (c *gameServiceClient) StreamMatch(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[PlayerInput, GameState], error) {
+func (c *gameServiceClient) StreamMatch(ctx context.Context, in *PlayerInput, opts ...grpc.CallOption) (*GameState, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &GameService_ServiceDesc.Streams[0], GameService_StreamMatch_FullMethodName, cOpts...)
+	out := new(GameState)
+	err := c.cc.Invoke(ctx, GameService_StreamMatch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[PlayerInput, GameState]{ClientStream: stream}
-	return x, nil
+	return out, nil
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type GameService_StreamMatchClient = grpc.BidiStreamingClient[PlayerInput, GameState]
 
 // GameServiceServer is the server API for GameService service.
 // All implementations must embed UnimplementedGameServiceServer
 // for forward compatibility.
 type GameServiceServer interface {
-	// Stream bidirecional para gameplay em tempo real
-	StreamMatch(grpc.BidiStreamingServer[PlayerInput, GameState]) error
+	// O Gateway precisa desta anotação para gerar o código
+	StreamMatch(context.Context, *PlayerInput) (*GameState, error)
 	mustEmbedUnimplementedGameServiceServer()
 }
 
@@ -67,8 +64,8 @@ type GameServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedGameServiceServer struct{}
 
-func (UnimplementedGameServiceServer) StreamMatch(grpc.BidiStreamingServer[PlayerInput, GameState]) error {
-	return status.Error(codes.Unimplemented, "method StreamMatch not implemented")
+func (UnimplementedGameServiceServer) StreamMatch(context.Context, *PlayerInput) (*GameState, error) {
+	return nil, status.Error(codes.Unimplemented, "method StreamMatch not implemented")
 }
 func (UnimplementedGameServiceServer) mustEmbedUnimplementedGameServiceServer() {}
 func (UnimplementedGameServiceServer) testEmbeddedByValue()                     {}
@@ -91,12 +88,23 @@ func RegisterGameServiceServer(s grpc.ServiceRegistrar, srv GameServiceServer) {
 	s.RegisterService(&GameService_ServiceDesc, srv)
 }
 
-func _GameService_StreamMatch_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(GameServiceServer).StreamMatch(&grpc.GenericServerStream[PlayerInput, GameState]{ServerStream: stream})
+func _GameService_StreamMatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PlayerInput)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GameServiceServer).StreamMatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GameService_StreamMatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GameServiceServer).StreamMatch(ctx, req.(*PlayerInput))
+	}
+	return interceptor(ctx, in, info, handler)
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type GameService_StreamMatchServer = grpc.BidiStreamingServer[PlayerInput, GameState]
 
 // GameService_ServiceDesc is the grpc.ServiceDesc for GameService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -104,14 +112,12 @@ type GameService_StreamMatchServer = grpc.BidiStreamingServer[PlayerInput, GameS
 var GameService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "match.GameService",
 	HandlerType: (*GameServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams: []grpc.StreamDesc{
+	Methods: []grpc.MethodDesc{
 		{
-			StreamName:    "StreamMatch",
-			Handler:       _GameService_StreamMatch_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
+			MethodName: "StreamMatch",
+			Handler:    _GameService_StreamMatch_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "match.proto",
 }

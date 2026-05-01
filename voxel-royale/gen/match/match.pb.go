@@ -7,6 +7,7 @@
 package match
 
 import (
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -213,7 +214,7 @@ var File_match_proto protoreflect.FileDescriptor
 
 const file_match_proto_rawDesc = "" +
 	"\n" +
-	"\vmatch.proto\x12\x05match\"{\n" +
+	"\vmatch.proto\x12\x05match\x1a\x1cgoogle/api/annotations.proto\"{\n" +
 	"\vPlayerInput\x12\x1b\n" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\x15\n" +
 	"\x06move_x\x18\x02 \x01(\x02R\x05moveX\x12\x15\n" +
@@ -226,9 +227,9 @@ const file_match_proto_rawDesc = "" +
 	"\tplayer_id\x18\x01 \x01(\tR\bplayerId\x12\f\n" +
 	"\x01x\x18\x02 \x01(\x02R\x01x\x12\f\n" +
 	"\x01y\x18\x03 \x01(\x02R\x01y\x12\x19\n" +
-	"\bis_alive\x18\x04 \x01(\bR\aisAlive2F\n" +
-	"\vGameService\x127\n" +
-	"\vStreamMatch\x12\x12.match.PlayerInput\x1a\x10.match.GameState(\x010\x01B\x18Z\x16voxel-royale/gen/matchb\x06proto3"
+	"\bis_alive\x18\x04 \x01(\bR\aisAlive2_\n" +
+	"\vGameService\x12P\n" +
+	"\vStreamMatch\x12\x12.match.PlayerInput\x1a\x10.match.GameState\"\x1b\x82\xd3\xe4\x93\x02\x15:\x01*\"\x10/v1/match/streamB\x18Z\x16voxel-royale/gen/matchb\x06proto3"
 
 var (
 	file_match_proto_rawDescOnce sync.Once
