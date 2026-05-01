@@ -59,5 +59,5 @@
 
 ## Sources
 
-- Course PDF: `C:\Users\João\Downloads\TP-Instrucoes.pdf`
+- Course instructions: `docs/course-instructions.md`
 - User PRD and stack decisions in initialization conversation.

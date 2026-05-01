@@ -1,0 +1,6 @@
+.git
+.planning
+docs
+deployments
+**/.DS_Store
+**/*.test

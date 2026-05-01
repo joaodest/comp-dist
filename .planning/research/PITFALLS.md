@@ -67,5 +67,5 @@
 
 ## Sources
 
-- Course PDF: `C:\Users\João\Downloads\TP-Instrucoes.pdf`
+- Course instructions: `docs/course-instructions.md`
 - User constraints and course evaluation criteria.
