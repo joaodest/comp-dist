@@ -12,3 +12,9 @@ gen-proto:
 		--grpc-gateway_opt=logtostderr=true \
 		$(PROTO_DIR)/*.proto
 	@echo "Código gRPC e Gateway gerados com sucesso!"
+
+run-server:
+	go run cmd/server/main.go
+
+run-gateway:
+	go run cmd/gateway/main.go

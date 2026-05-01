@@ -1,56 +1,50 @@
-# Voxel Royale
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   # Voxel Royale  Sistema de backend escalável e distribuído para o projeto **Voxel Royale**. A arquitetura utiliza **gRPC** para comunicação interna de alta performance e **gRPC-Gateway** para expor endpoints RESTful compatíveis com clientes Web e Mobile.  ## 📂 Estrutura do Projeto  ```text  /voxel-royale  ├── cmd/                # Pontos de entrada dos executáveis  │   ├── gateway/        # Reverse Proxy (Tradutor HTTP -> gRPC)  │   └── server/         # Core Server (Lógica gRPC)  ├── proto/              # Contratos (.proto) - A "Fonte da Verdade"  ├── gen/                # Código Go autogerado (NÃO EDITAR)  ├── services/           # Implementação da lógica de negócio  ├── third_party/        # Dependências de terceiros (Google APIs)  ├── Makefile            # Automação de builds e execução  ├── go.mod              # Módulo Go e dependências  └── README.md           # Documentação principal   `
 
-## 📂 Estrutura do Projeto
+🛠 Pré-requisitos
+-----------------
 
-```text
-/voxel-royale
-├── proto/              # Contratos do sistema (.proto) - A "fonte da verdade"
-├── gen/                # Código Go gerado automaticamente (NÃO EDITAR)
-├── services/           # Lógica de implementação dos serviços (gateway, lobby, game)
-├── Makefile            # Automação de compilação
-├── go.mod              # Gerenciamento de dependências
-└── README.md           # Este arquivo
-```
+Para compilar e rodar o projeto, você precisará de:
 
-## 🚀 Como Começar
+1.  **Go (1.22+)**
+    
+2.  **Protobuf Compiler (protoc)**: Baixe no site oficial ou via gerenciador de pacotes.
+    
+3.  **Plugins Go para Protoc**:
+    
 
-### 1. Clone o repositório
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   go install google.golang.org/protobuf/cmd/protoc-gen-go@latest  go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest  go install [github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@l   `
 
-```bash
-git clone <URL_DO_SEU_REPO>
-cd voxel-royale
-```
+📦 Google APIs (Dependências Externas)
+--------------------------------------
 
-### 2. Inicialize as dependências
+O projeto utiliza anotações do Google para mapear chamadas gRPC para rotas HTTP (REST). Essas definições não vêm por padrão no compilador e precisam estar presentes na pasta third\_party.
 
-```bash
-go mod download
-```
+### Como configurar:
 
-### 3. Gerar o código gRPC
+Caso a pasta third\_party/googleapis esteja vazia, você deve baixar os arquivos necessários do repositório oficial do Google:
 
-Sempre que alterar qualquer arquivo dentro da pasta `proto/`, execute na raiz:
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   mkdir -p third_party  cd third_party  git clone --depth 1 [https://github.com/googleapis/googleapis](https://github.com/googleapis/googleapis)   `
 
-```bash
-make gen-proto
-```
+**Por que isso é necessário?**O arquivo match.proto importa google/api/annotations.proto. Sem esses arquivos locais, o protoc não consegue gerar o arquivo match.pb.gw.go responsável pelo funcionamento do Gateway.
 
-Isso atualizará os arquivos na pasta `gen/` automaticamente.
+🚀 Como Começar
+---------------
 
-### 4. Rodar os serviços
+### 1\. Inicializar o Módulo
 
-(Instruções específicas para cada serviço serão adicionadas conforme o desenvolvimento avançar).
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   go mod tidy   `
 
-## 📜 Regras de Colaboração (Time de 9 pessoas)
+### 2\. Gerar Código (Sempre que alterar o .proto)
 
-Para mantermos o projeto organizado e funcional, seguimos estas regras estritas:
+Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   make gen-proto   `
 
-- **Contratos primeiro:** Qualquer mudança na comunicação entre serviços deve ser feita primeiro no arquivo `.proto`. Não crie rotas ou campos manualmente no código Go sem atualizar o contrato.
-- **Não edite a pasta gen/:** Esta pasta é gerada automaticamente pelo compilador. Qualquer alteração manual aqui será perdida na próxima compilação.
-- **Commits:** Inclua sempre o arquivo `.proto` modificado e o arquivo gerado correspondente em `gen/` no mesmo commit.
-- **Makefile:** O `make gen-proto` é a forma padrão de compilar os contratos. Evite comandos manuais longos no terminal.
-- **Formatação:** Utilize o "Format on Save" do VS Code (com a extensão `vscode-proto3`) para garantir que todos os arquivos `.proto` sigam o mesmo padrão visual.
+### 3\. Rodar o Sistema
 
-## 🤝 Contato
+Abra dois terminais na raiz do projeto:
 
-Responsáveis pela arquitetura: **Victor Souza Lima** e equipe de **TI5**.
+*   Bashmake run-server
+    
+*   Bashmake run-gateway
+    
+
+O servidor estará aceitando conexões gRPC na porta :50051 e o Gateway estará ouvindo requisições HTTP na porta :8080.
