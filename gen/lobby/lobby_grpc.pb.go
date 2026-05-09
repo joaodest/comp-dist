@@ -21,6 +21,9 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	LobbyService_CreateRoom_FullMethodName = "/lobby.LobbyService/CreateRoom"
 	LobbyService_JoinRoom_FullMethodName   = "/lobby.LobbyService/JoinRoom"
+	LobbyService_GetRoom_FullMethodName    = "/lobby.LobbyService/GetRoom"
+	LobbyService_StartRoom_FullMethodName  = "/lobby.LobbyService/StartRoom"
+	LobbyService_LeaveRoom_FullMethodName  = "/lobby.LobbyService/LeaveRoom"
 )
 
 // LobbyServiceClient is the client API for LobbyService service.
@@ -29,6 +32,9 @@ const (
 type LobbyServiceClient interface {
 	CreateRoom(ctx context.Context, in *CreateRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error)
 	JoinRoom(ctx context.Context, in *JoinRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error)
+	GetRoom(ctx context.Context, in *GetRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error)
+	StartRoom(ctx context.Context, in *StartRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error)
+	LeaveRoom(ctx context.Context, in *LeaveRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error)
 }
 
 type lobbyServiceClient struct {
@@ -59,12 +65,45 @@ func (c *lobbyServiceClient) JoinRoom(ctx context.Context, in *JoinRoomRequest, 
 	return out, nil
 }
 
+func (c *lobbyServiceClient) GetRoom(ctx context.Context, in *GetRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RoomResponse)
+	err := c.cc.Invoke(ctx, LobbyService_GetRoom_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *lobbyServiceClient) StartRoom(ctx context.Context, in *StartRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RoomResponse)
+	err := c.cc.Invoke(ctx, LobbyService_StartRoom_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *lobbyServiceClient) LeaveRoom(ctx context.Context, in *LeaveRoomRequest, opts ...grpc.CallOption) (*RoomResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RoomResponse)
+	err := c.cc.Invoke(ctx, LobbyService_LeaveRoom_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LobbyServiceServer is the server API for LobbyService service.
 // All implementations must embed UnimplementedLobbyServiceServer
 // for forward compatibility.
 type LobbyServiceServer interface {
 	CreateRoom(context.Context, *CreateRoomRequest) (*RoomResponse, error)
 	JoinRoom(context.Context, *JoinRoomRequest) (*RoomResponse, error)
+	GetRoom(context.Context, *GetRoomRequest) (*RoomResponse, error)
+	StartRoom(context.Context, *StartRoomRequest) (*RoomResponse, error)
+	LeaveRoom(context.Context, *LeaveRoomRequest) (*RoomResponse, error)
 	mustEmbedUnimplementedLobbyServiceServer()
 }
 
@@ -80,6 +119,15 @@ func (UnimplementedLobbyServiceServer) CreateRoom(context.Context, *CreateRoomRe
 }
 func (UnimplementedLobbyServiceServer) JoinRoom(context.Context, *JoinRoomRequest) (*RoomResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method JoinRoom not implemented")
+}
+func (UnimplementedLobbyServiceServer) GetRoom(context.Context, *GetRoomRequest) (*RoomResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRoom not implemented")
+}
+func (UnimplementedLobbyServiceServer) StartRoom(context.Context, *StartRoomRequest) (*RoomResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartRoom not implemented")
+}
+func (UnimplementedLobbyServiceServer) LeaveRoom(context.Context, *LeaveRoomRequest) (*RoomResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LeaveRoom not implemented")
 }
 func (UnimplementedLobbyServiceServer) mustEmbedUnimplementedLobbyServiceServer() {}
 func (UnimplementedLobbyServiceServer) testEmbeddedByValue()                      {}
@@ -138,6 +186,60 @@ func _LobbyService_JoinRoom_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LobbyService_GetRoom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRoomRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LobbyServiceServer).GetRoom(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LobbyService_GetRoom_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LobbyServiceServer).GetRoom(ctx, req.(*GetRoomRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LobbyService_StartRoom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartRoomRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LobbyServiceServer).StartRoom(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LobbyService_StartRoom_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LobbyServiceServer).StartRoom(ctx, req.(*StartRoomRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LobbyService_LeaveRoom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LeaveRoomRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LobbyServiceServer).LeaveRoom(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LobbyService_LeaveRoom_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LobbyServiceServer).LeaveRoom(ctx, req.(*LeaveRoomRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LobbyService_ServiceDesc is the grpc.ServiceDesc for LobbyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +254,18 @@ var LobbyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "JoinRoom",
 			Handler:    _LobbyService_JoinRoom_Handler,
+		},
+		{
+			MethodName: "GetRoom",
+			Handler:    _LobbyService_GetRoom_Handler,
+		},
+		{
+			MethodName: "StartRoom",
+			Handler:    _LobbyService_StartRoom_Handler,
+		},
+		{
+			MethodName: "LeaveRoom",
+			Handler:    _LobbyService_LeaveRoom_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
