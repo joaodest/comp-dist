@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	lobbyv1 "voxel-royale/gen/lobby"
 	matchv1 "voxel-royale/gen/match"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -20,10 +21,14 @@ func NewHealthMux() *http.ServeMux {
 	return mux
 }
 
-func NewProxyMux(ctx context.Context, gameGRPCAddr string) (http.Handler, error) {
+func NewProxyMux(ctx context.Context, gameGRPCAddr, lobbyGRPCAddr string) (http.Handler, error) {
 	proxy := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+
 	if err := matchv1.RegisterGameServiceHandlerFromEndpoint(ctx, proxy, gameGRPCAddr, opts); err != nil {
+		return nil, err
+	}
+	if err := lobbyv1.RegisterLobbyServiceHandlerFromEndpoint(ctx, proxy, lobbyGRPCAddr, opts); err != nil {
 		return nil, err
 	}
 
