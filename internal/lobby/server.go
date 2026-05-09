@@ -15,21 +15,22 @@ import (
 const defaultMaxPlayers = 50
 
 type room struct {
-	id         string
-	ownerID    string
-	ownerName  string
-	status     lobbyv1.RoomStatus
-	maxPlayers int32
-	players    []*lobbyv1.Player
-	playerSet  map[string]bool
+	id           string
+	ownerID      string
+	ownerName    string
+	status       lobbyv1.RoomStatus
+	maxPlayers   int32
+	players      []*lobbyv1.Player
+	playerSet    map[string]bool
+	nextPlayerID uint64
 }
 
 type Server struct {
 	lobbyv1.UnimplementedLobbyServiceServer
 
-	mu      sync.RWMutex
-	rooms   map[string]*room
-	nextID  uint64
+	mu     sync.RWMutex
+	rooms  map[string]*room
+	nextID uint64
 }
 
 func NewServer() *Server {
@@ -53,7 +54,7 @@ func (s *Server) CreateRoom(_ context.Context, req *lobbyv1.CreateRoomRequest) (
 
 	s.nextID++
 	roomID := fmt.Sprintf("room-%d", s.nextID)
-	playerID := fmt.Sprintf("player-%d-%d", s.nextID, 1)
+	playerID := fmt.Sprintf("player-%d-1", s.nextID)
 
 	owner := &lobbyv1.Player{
 		PlayerId:   playerID,
@@ -61,13 +62,14 @@ func (s *Server) CreateRoom(_ context.Context, req *lobbyv1.CreateRoomRequest) (
 	}
 
 	r := &room{
-		id:         roomID,
-		ownerID:    playerID,
-		ownerName:  strings.TrimSpace(req.OwnerName),
-		status:     lobbyv1.RoomStatus_ROOM_STATUS_WAITING,
-		maxPlayers: maxPlayers,
-		players:    []*lobbyv1.Player{owner},
-		playerSet:  map[string]bool{playerID: true},
+		id:           roomID,
+		ownerID:      playerID,
+		ownerName:    strings.TrimSpace(req.OwnerName),
+		status:       lobbyv1.RoomStatus_ROOM_STATUS_WAITING,
+		maxPlayers:   maxPlayers,
+		players:      []*lobbyv1.Player{owner},
+		playerSet:    map[string]bool{playerID: true},
+		nextPlayerID: 2,
 	}
 	s.rooms[roomID] = r
 
@@ -75,32 +77,35 @@ func (s *Server) CreateRoom(_ context.Context, req *lobbyv1.CreateRoomRequest) (
 }
 
 func (s *Server) JoinRoom(_ context.Context, req *lobbyv1.JoinRoomRequest) (*lobbyv1.RoomResponse, error) {
-	if req == nil || strings.TrimSpace(req.RoomId) == "" {
-		return nil, status.Error(codes.InvalidArgument, "room_id is required")
+	roomID, err := requireTrimmed(req.GetRoomId(), "room_id")
+	if err != nil {
+		return nil, err
 	}
-	if strings.TrimSpace(req.PlayerName) == "" {
-		return nil, status.Error(codes.InvalidArgument, "player_name is required")
+	playerName, err := requireTrimmed(req.GetPlayerName(), "player_name")
+	if err != nil {
+		return nil, err
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	r, ok := s.rooms[req.RoomId]
+	r, ok := s.rooms[roomID]
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "room %s not found", req.RoomId)
+		return nil, status.Errorf(codes.NotFound, "room %s not found", roomID)
 	}
 	if r.status != lobbyv1.RoomStatus_ROOM_STATUS_WAITING {
-		return nil, status.Errorf(codes.FailedPrecondition, "room %s is not accepting players", req.RoomId)
+		return nil, status.Errorf(codes.FailedPrecondition, "room %s is not accepting players", roomID)
 	}
 	if int32(len(r.players)) >= r.maxPlayers {
-		return nil, status.Errorf(codes.FailedPrecondition, "room %s is full", req.RoomId)
+		return nil, status.Errorf(codes.FailedPrecondition, "room %s is full", roomID)
 	}
 
-	playerID := fmt.Sprintf("player-%s-%d", req.RoomId, len(r.players)+1)
+	playerID := fmt.Sprintf("player-%s-%d", roomID, r.nextPlayerID)
+	r.nextPlayerID++
 
 	player := &lobbyv1.Player{
 		PlayerId:   playerID,
-		PlayerName: strings.TrimSpace(req.PlayerName),
+		PlayerName: playerName,
 	}
 	r.players = append(r.players, player)
 	r.playerSet[playerID] = true
@@ -109,40 +114,43 @@ func (s *Server) JoinRoom(_ context.Context, req *lobbyv1.JoinRoomRequest) (*lob
 }
 
 func (s *Server) GetRoom(_ context.Context, req *lobbyv1.GetRoomRequest) (*lobbyv1.RoomResponse, error) {
-	if req == nil || strings.TrimSpace(req.RoomId) == "" {
-		return nil, status.Error(codes.InvalidArgument, "room_id is required")
+	roomID, err := requireTrimmed(req.GetRoomId(), "room_id")
+	if err != nil {
+		return nil, err
 	}
 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	r, ok := s.rooms[req.RoomId]
+	r, ok := s.rooms[roomID]
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "room %s not found", req.RoomId)
+		return nil, status.Errorf(codes.NotFound, "room %s not found", roomID)
 	}
 
 	return roomToResponse(r), nil
 }
 
 func (s *Server) StartRoom(_ context.Context, req *lobbyv1.StartRoomRequest) (*lobbyv1.RoomResponse, error) {
-	if req == nil || strings.TrimSpace(req.RoomId) == "" {
-		return nil, status.Error(codes.InvalidArgument, "room_id is required")
+	roomID, err := requireTrimmed(req.GetRoomId(), "room_id")
+	if err != nil {
+		return nil, err
 	}
-	if strings.TrimSpace(req.PlayerId) == "" {
-		return nil, status.Error(codes.InvalidArgument, "player_id is required")
+	playerID, err := requireTrimmed(req.GetPlayerId(), "player_id")
+	if err != nil {
+		return nil, err
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	r, ok := s.rooms[req.RoomId]
+	r, ok := s.rooms[roomID]
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "room %s not found", req.RoomId)
+		return nil, status.Errorf(codes.NotFound, "room %s not found", roomID)
 	}
 	if r.status != lobbyv1.RoomStatus_ROOM_STATUS_WAITING {
-		return nil, status.Errorf(codes.FailedPrecondition, "room %s cannot be started (status: %s)", req.RoomId, r.status)
+		return nil, status.Errorf(codes.FailedPrecondition, "room %s cannot be started (status: %v)", roomID, r.status)
 	}
-	if req.PlayerId != r.ownerID {
+	if playerID != r.ownerID {
 		return nil, status.Errorf(codes.PermissionDenied, "only the room owner can start the room")
 	}
 
@@ -152,47 +160,57 @@ func (s *Server) StartRoom(_ context.Context, req *lobbyv1.StartRoomRequest) (*l
 }
 
 func (s *Server) LeaveRoom(_ context.Context, req *lobbyv1.LeaveRoomRequest) (*lobbyv1.RoomResponse, error) {
-	if req == nil || strings.TrimSpace(req.RoomId) == "" {
-		return nil, status.Error(codes.InvalidArgument, "room_id is required")
+	roomID, err := requireTrimmed(req.GetRoomId(), "room_id")
+	if err != nil {
+		return nil, err
 	}
-	if strings.TrimSpace(req.PlayerId) == "" {
-		return nil, status.Error(codes.InvalidArgument, "player_id is required")
+	playerID, err := requireTrimmed(req.GetPlayerId(), "player_id")
+	if err != nil {
+		return nil, err
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	r, ok := s.rooms[req.RoomId]
+	r, ok := s.rooms[roomID]
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "room %s not found", req.RoomId)
+		return nil, status.Errorf(codes.NotFound, "room %s not found", roomID)
 	}
-	if !r.playerSet[req.PlayerId] {
-		return nil, status.Errorf(codes.NotFound, "player %s not found in room %s", req.PlayerId, req.RoomId)
+	if !r.playerSet[playerID] {
+		return nil, status.Errorf(codes.NotFound, "player %s not found in room %s", playerID, roomID)
 	}
 
-	delete(r.playerSet, req.PlayerId)
+	delete(r.playerSet, playerID)
 	filtered := r.players[:0]
 	for _, p := range r.players {
-		if p.PlayerId != req.PlayerId {
+		if p.PlayerId != playerID {
 			filtered = append(filtered, p)
 		}
 	}
 	r.players = filtered
 
-	if req.PlayerId == r.ownerID {
+	if playerID == r.ownerID {
 		if len(r.players) > 0 {
 			r.ownerID = r.players[0].PlayerId
 		} else {
 			r.status = lobbyv1.RoomStatus_ROOM_STATUS_CLOSED
+			r.ownerID = ""
+			delete(s.rooms, roomID)
 		}
 	}
 
-	return roomToResponse(r), nil
+	resp := roomToResponse(r)
+	return resp, nil
 }
 
 func roomToResponse(r *room) *lobbyv1.RoomResponse {
 	players := make([]*lobbyv1.Player, len(r.players))
-	copy(players, r.players)
+	for i, p := range r.players {
+		players[i] = &lobbyv1.Player{
+			PlayerId:   p.PlayerId,
+			PlayerName: p.PlayerName,
+		}
+	}
 
 	return &lobbyv1.RoomResponse{
 		RoomId:     r.id,
@@ -202,4 +220,12 @@ func roomToResponse(r *room) *lobbyv1.RoomResponse {
 		MaxPlayers: r.maxPlayers,
 		JoinUrl:    fmt.Sprintf("/v1/rooms/%s/join", r.id),
 	}
+}
+
+func requireTrimmed(value, field string) (string, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "", status.Errorf(codes.InvalidArgument, "%s is required", field)
+	}
+	return trimmed, nil
 }

@@ -53,7 +53,7 @@ Lobby is fully implemented with in-memory room state and connected to the Gatewa
 | Monorepo structure | Implemented at repo root with service, internal, proto, gen and deployment boundaries. |
 | Gateway service | Implemented as HTTP entrypoint with healthcheck and grpc-gateway proxy to Game and Lobby. |
 | Game service | Implemented as separate gRPC service with authoritative `StreamMatch` movement, chests, weapons, damage, safe zone and ranking behavior. |
-| Lobby service | Implemented with in-memory room state: CreateRoom, JoinRoom, GetRoom, StartRoom, LeaveRoom. 21 unit tests. |
+| Lobby service | Implemented with in-memory room state: CreateRoom, JoinRoom, GetRoom, StartRoom, LeaveRoom. 24 unit tests. |
 | Per-service containers | Implemented with one Dockerfile per service. |
 | Docker Compose | Implemented in `deployments/docker-compose.yml`; Gateway depends on healthy Game and Lobby. |
 | Go version | Updated to Go 1.25.0 to support the selected grpc-gateway dependency. |
