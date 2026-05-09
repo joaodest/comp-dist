@@ -4,13 +4,59 @@ package lobby;
 
 option go_package = "voxel-royale/gen/lobby";
 
+import "google/api/annotations.proto";
+
 service LobbyService {
-  rpc CreateRoom(CreateRoomRequest) returns (RoomResponse);
-  rpc JoinRoom(JoinRoomRequest) returns (RoomResponse);
+  rpc CreateRoom(CreateRoomRequest) returns (RoomResponse) {
+    option (google.api.http) = {
+      post: "/v1/rooms"
+      body: "*"
+    };
+  }
+
+  rpc JoinRoom(JoinRoomRequest) returns (RoomResponse) {
+    option (google.api.http) = {
+      post: "/v1/rooms/{room_id}/join"
+      body: "*"
+    };
+  }
+
+  rpc GetRoom(GetRoomRequest) returns (RoomResponse) {
+    option (google.api.http) = {
+      get: "/v1/rooms/{room_id}"
+    };
+  }
+
+  rpc StartRoom(StartRoomRequest) returns (RoomResponse) {
+    option (google.api.http) = {
+      post: "/v1/rooms/{room_id}/start"
+      body: "*"
+    };
+  }
+
+  rpc LeaveRoom(LeaveRoomRequest) returns (RoomResponse) {
+    option (google.api.http) = {
+      post: "/v1/rooms/{room_id}/leave"
+      body: "*"
+    };
+  }
+}
+
+enum RoomStatus {
+  ROOM_STATUS_UNSPECIFIED = 0;
+  ROOM_STATUS_WAITING = 1;
+  ROOM_STATUS_STARTED = 2;
+  ROOM_STATUS_CLOSED = 3;
+}
+
+message Player {
+  string player_id = 1;
+  string player_name = 2;
 }
 
 message CreateRoomRequest {
   string owner_name = 1;
+  int32 max_players = 2;
 }
 
 message JoinRoomRequest {
@@ -18,7 +64,25 @@ message JoinRoomRequest {
   string player_name = 2;
 }
 
+message GetRoomRequest {
+  string room_id = 1;
+}
+
+message StartRoomRequest {
+  string room_id = 1;
+  string player_id = 2;
+}
+
+message LeaveRoomRequest {
+  string room_id = 1;
+  string player_id = 2;
+}
+
 message RoomResponse {
   string room_id = 1;
-  string status = 2;
+  RoomStatus status = 2;
+  string owner_id = 3;
+  repeated Player players = 4;
+  int32 max_players = 5;
+  string join_url = 6;
 }

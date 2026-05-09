@@ -11,11 +11,15 @@ func TestConfigDefaults(t *testing.T) {
 	if cfg.GameGRPCAddr != "localhost:50051" {
 		t.Fatalf("GameGRPCAddr = %q, want localhost:50051", cfg.GameGRPCAddr)
 	}
+	if cfg.LobbyGRPCAddr != "localhost:50052" {
+		t.Fatalf("LobbyGRPCAddr = %q, want localhost:50052", cfg.LobbyGRPCAddr)
+	}
 }
 
 func TestConfigFromEnvUsesContainerServiceAddress(t *testing.T) {
 	t.Setenv("HTTP_ADDR", ":9090")
 	t.Setenv("GAME_GRPC_ADDR", "game:50051")
+	t.Setenv("LOBBY_GRPC_ADDR", "lobby:50052")
 
 	cfg := ConfigFromEnv()
 
@@ -24,5 +28,8 @@ func TestConfigFromEnvUsesContainerServiceAddress(t *testing.T) {
 	}
 	if cfg.GameGRPCAddr != "game:50051" {
 		t.Fatalf("GameGRPCAddr = %q, want game:50051", cfg.GameGRPCAddr)
+	}
+	if cfg.LobbyGRPCAddr != "lobby:50052" {
+		t.Fatalf("LobbyGRPCAddr = %q, want lobby:50052", cfg.LobbyGRPCAddr)
 	}
 }

@@ -6,6 +6,7 @@ services:
     environment:
       HTTP_ADDR: :8080
       GAME_GRPC_ADDR: game:50051
+      LOBBY_GRPC_ADDR: lobby:50052
     ports:
       - "8080:8080"
     depends_on:
