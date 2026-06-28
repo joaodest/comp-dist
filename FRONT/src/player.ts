@@ -1,8 +1,50 @@
 export interface Player extends Phaser.Physics.Arcade.Sprite {
   isShooting?: boolean;
-  currentWeaponType?: string; 
+  currentWeaponType?: string;
   weaponSprite?: Phaser.GameObjects.Sprite;
+  lastFiredAt?: number;
+  facing?: "back" | "south" | "left" | "right";
 }
+
+export interface WeaponStats {
+  damage: number;
+  speed: number;
+  cooldownMs: number;
+  pellets: number;
+  spreadRad: number;
+  bulletTexture: string;
+  lifespanMs: number;
+}
+
+export const WEAPON_STATS: Record<string, WeaponStats> = {
+  pistol: {
+    damage: 25,
+    speed: 700,
+    cooldownMs: 300,
+    pellets: 1,
+    spreadRad: 0,
+    bulletTexture: "pistol_bullet",
+    lifespanMs: 1200,
+  },
+  rifle: {
+    damage: 15,
+    speed: 900,
+    cooldownMs: 110,
+    pellets: 1,
+    spreadRad: 0.04,
+    bulletTexture: "rifle_bullet",
+    lifespanMs: 1500,
+  },
+  shotgun: {
+    damage: 12,
+    speed: 600,
+    cooldownMs: 700,
+    pellets: 5,
+    spreadRad: 0.35,
+    bulletTexture: "pistol_bullet",
+    lifespanMs: 600,
+  },
+};
 
 const FRAME_WIDTH = 64;  
 const FRAME_HEIGHT = 60; 
@@ -44,11 +86,19 @@ export const loadPlayerSprites = (scene: Phaser.Scene): void => {
 export const createPlayer = (scene: Phaser.Scene): Player => {
   const player = scene.physics.add.sprite(400, 400, "walk_south") as Player;
   player.isShooting = false;
-  player.currentWeaponType = undefined; 
+  player.currentWeaponType = undefined;
+  player.lastFiredAt = 0;
+  player.facing = "south";
   player.setDepth(10); // Player no layer 10
-  
+
   createPlayerAnimations(scene, player);
   return player;
+};
+
+export const loadBulletSprites = (scene: Phaser.Scene): void => {
+  // Carrega as balas como imagens simples (rotacionadas por codigo)
+  scene.load.image("pistol_bullet", "./assets/guns/pistol_bullet_sprite.png");
+  scene.load.image("rifle_bullet", "./assets/guns/rifle_cartridge_sprite.png");
 };
 
 export const createPlayerAnimations = (scene: Phaser.Scene, player: Player): void => {
