@@ -226,6 +226,36 @@ func TestServerStreamMatchSpawnsThreeWeaponTypesInChests(t *testing.T) {
 	}
 }
 
+func TestServerStreamMatchResetsAfterMatchEnded(t *testing.T) {
+	server := NewServer()
+
+	server.mu.Lock()
+	server.match.matchEnded = true
+	server.match.tick = maxMatchTicks
+	server.mu.Unlock()
+
+	state, err := server.StreamMatch(context.Background(), &matchv1.PlayerInput{
+		PlayerId:      "new-runner",
+		MoveX:         1,
+		InputSequence: 1,
+	})
+	if err != nil {
+		t.Fatalf("StreamMatch returned error: %v", err)
+	}
+
+	if state.Tick != 1 {
+		t.Fatalf("tick = %d, want 1 after reset", state.Tick)
+	}
+
+	player := findPlayer(t, state, "new-runner")
+	if player.X != 1 || player.Y != 0 {
+		t.Fatalf("player coordinates = (%v,%v), want (1,0)", player.X, player.Y)
+	}
+	if state.MatchEnded {
+		t.Fatal("new match should not be ended")
+	}
+}
+
 func findPlayer(t *testing.T, state *matchv1.GameState, playerID string) *matchv1.PlayerSnapshot {
 	t.Helper()
 	for _, player := range state.Players {

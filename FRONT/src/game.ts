@@ -1,170 +1,323 @@
 import * as Phaser from "phaser";
-import { createPlayer, loadPlayerSprites } from "./player";
-import { createControls, configControls } from "./controls";
+import {
+  ChestSnapshot,
+  GameState,
+  PlayerSnapshot,
+  submitPlayerInput,
+} from "./api";
+import {
+  applyPlayerAnimation,
+  ControlState,
+  createControls,
+  GameControls,
+  readControls,
+} from "./controls";
+import { createPlayer, loadPlayerSprites, Player } from "./player";
+
+const SERVER_ARENA_HALF_SIZE = 50;
+const INPUT_INTERVAL_MS = 100;
+const INPUT_MOVE_UNITS = 1.5;
+const PLAYER_ID_STORAGE_KEY = "voxel_royale_player_id";
+
+const idleControlState: ControlState = {
+  moveX: 0,
+  moveY: 0,
+  openChest: false,
+  isAttacking: false,
+  aimX: 0,
+  aimY: 0,
+  direction: "",
+};
+
+const updateFrontendStatus = (message: string): void => {
+  const element = document.getElementById("sync-status");
+  if (element) {
+    element.textContent = message;
+  }
+};
 
 export default class Demo extends Phaser.Scene {
-  player: any;
-  controls: any;
-  chestsGroup: any;
-  // Variável para guardar o grupo de baús
+  player: Player;
+  controls: GameControls;
+  chestsGroup: Phaser.Physics.Arcade.StaticGroup;
+
+  private playerId = loadOrCreatePlayerId();
+  private inputSequence = 0;
+  private nextInputAt = 0;
+  private requestInFlight = false;
+  private pendingOpenChest = false;
+  private lastControlState = idleControlState;
+  private chestSpritesById: { [chestId: string]: any } = {};
+  private remotePlayersById: { [playerId: string]: Phaser.Physics.Arcade.Sprite } = {};
+  private mapCenterX = 0;
+  private mapCenterY = 0;
+  private serverToWorldScale = 1;
+  private statusText: Phaser.GameObjects.Text;
 
   constructor() {
     super("demo");
   }
 
   preload() {
-    // Cada key deve ser única e diferente do nome do tileset no JSON
     this.load.image("mountain_img", "./assets/map5/mountain.png");
     this.load.image("wood_img", "./assets/map5/wood_tileset.png");
     this.load.image("tiles_img", "./assets/map5/tiles.png");
     this.load.image("pm_img", "./assets/map5/pm.png");
-    this.load.spritesheet('bau_pixel', './assets/map5/baus.png', { 
-        frameWidth: 32,  // Largura de UM baú
-        frameHeight: 32  // Altura do baú
+    this.load.spritesheet("bau_pixel", "./assets/map5/baus.png", {
+      frameWidth: 32,
+      frameHeight: 32,
     });
     this.load.tilemapTiledJSON("map", "./assets/map5/map.json");
-    
-    // Carregamento do jogador (com suas imagens divididas e armas)
+
     loadPlayerSprites(this);
   }
 
   create() {
+    updateFrontendStatus("Cena criada. Conectando ao backend...");
+
     const map = this.make.tilemap({ key: "map" });
-    
-    // 1º arg: nome exato do tileset no map.json | 2º arg: key usada no preload
+    this.configureCoordinateMapping(map);
+
     const tsMount = map.addTilesetImage("mountain", "mountain_img");
     const tsWood = map.addTilesetImage("wood_tileset", "wood_img");
     const tsTiles = map.addTilesetImage("tiles", "tiles_img");
     const tsPm = map.addTilesetImage("pm", "pm_img");
-
-    // Layers usam múltiplos tilesets — passa todos de uma vez
     const allTilesets = [tsMount, tsWood, tsTiles, tsPm];
-    
-    // Nomes exatos das layers do map.json
+
     const layer1 = map.createLayer("Tile Layer 1", allTilesets as Phaser.Tilemaps.Tileset[], 0, 0);
     const layer2 = map.createLayer("Tile Layer 2", allTilesets as Phaser.Tilemaps.Tileset[], 0, 0);
 
-    // Ativa colisão nas tiles marcadas com { collider: true } no map.json
     if (layer1) layer1.setCollisionByProperty({ collider: true });
     if (layer2) layer2.setCollisionByProperty({ collider: true });
-    
-    // cria um grupo estático para os baús
+
     this.chestsGroup = this.physics.add.staticGroup();
-    
-    // id falso simulando oq o back vai mandar
-    const mockChestPositions = [
-      { id: "chest_01", x: 150, y: 200 },
-      { id: "chest_02", x: 300, y: 350 },
-      { id: "chest_03", x: 500, y: 150 },
-      { id: "chest_04", x: 700, y: 400 },
-      { id: "chest_05", x: 900, y: 250 },
-      { id: "chest_06", x: 1200, y: 600 },
-      { id: "chest_07", x: 1450, y: 300 },
-      { id: "chest_08", x: 800, y: 950 },
-      { id: "chest_09", x: 1750, y: 1200 },
-      { id: "chest_10", x: 400, y: 1400 },
-      { id: "chest_11", x: 1500, y: 600 },
-      { id: "chest_12", x: 2000, y: 800 },
-      { id: "chest_13", x: 2500, y: 1000 },
-      { id: "chest_14", x: 100, y: 1200 },
-      { id: "chest_15", x: 600, y: 1500 }
-    ];
-    
-    // 2. FUTURO Back-end: buscar posições reais do servidor via Gateway
-    /*
-    fetch('http://gateway:PORTA/api/v1/game/chests')
-      .then(response => response.json())
-      .then(data => {
-         this.spawnChests(data.chests);
-      })
-      .catch(err => console.error('Erro ao buscar baús do servidor:', err));
-    */
-
-    // desenha baus na tela
-    this.spawnChests(mockChestPositions);
-    // ------------------------------------------------
-
     this.player = createPlayer(this);
     this.controls = createControls(this);
+    this.statusText = this.add
+      .text(12, 12, "Conectando ao backend...", {
+        fontFamily: "monospace",
+        fontSize: "14px",
+        color: "#ffffff",
+        backgroundColor: "rgba(0, 0, 0, 0.55)",
+        padding: { x: 8, y: 6 },
+      })
+      .setScrollFactor(0)
+      .setDepth(1000);
 
-    // Aqui camera vai acompanhar o jogador e n sair do mapa
-    this.cameras.main.setBounds(
-      0,
-      0,
-      map.widthInPixels,
-      map.heightInPixels
-    );
-    
-    // Faz a câmera seguir o jogador
-    this.cameras.main.startFollow(
-      this.player,
-      true,
-      0.08,
-      0.08
-    );
-    
-    // Zoom (opcional)
-    // this.cameras.main.setZoom(1);
+    this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
 
-    // Colisão do player com ambas as layers
     this.physics.add.collider(this.player, layer1 as any);
     this.physics.add.collider(this.player, layer2 as any);
-
-    // Adiciona colisão do jogador com os baús, chamando a função 'openChest'
     this.physics.add.collider(this.player, this.chestsGroup, this.openChest, undefined, this);
+
+    this.sendInput(this.lastControlState);
   }
 
-  update() {
-    // Processamento de inputs, movimento e sincronização da arma
-    configControls(this.player, this.controls, this);
-  }
-
-  // Função auxiliar para criar os baús
-  spawnChests(positions: any[]) {
-    positions.forEach((pos) => {
-      // Cria o baú na posição X e Y
-      let chestSprite = this.chestsGroup.create(pos.x, pos.y, 'bau_pixel', 0);
-      
-      // salva id
-      chestSprite.chestId = pos.id;
-    });
-  }
-
-// ====================================================================
-  // Função para equipar a arma no jogador
-  // ====================================================================
-  equipWeapon(player: any, weaponType: string) {
-    // Se o player ainda não tiver o sprite da arma, cria um colado nele
-    if (!player.weaponSprite) {
-      player.weaponSprite = this.add.sprite(player.x, player.y, `${weaponType}_south`);
-      // Coloca no layer 11 (acima do player que está no 10)
-      player.weaponSprite.setDepth(11); 
+  update(time: number) {
+    if (!this.player || !this.controls) {
+      return;
     }
-    
-    player.currentWeaponType = weaponType;
-    player.weaponSprite.setVisible(true);
-    console.log(`Jogador equipou a arma: ${weaponType}`);
+
+    const controlState = readControls(this.player, this.controls, this);
+    if (controlState.openChest) {
+      this.pendingOpenChest = true;
+    }
+
+    this.lastControlState = controlState;
+    applyPlayerAnimation(this.player, controlState);
+
+    if (time >= this.nextInputAt && !this.requestInFlight) {
+      this.nextInputAt = time + INPUT_INTERVAL_MS;
+      this.sendInput(controlState);
+    }
   }
 
-  // Função disparada quando o jogador colide com o baú
-  openChest(player: any, chest: any) {
-    if (chest.frame.name === 0) {
-      chest.setFrame(1); 
-      console.log(`Baú ${chest.chestId} aberto (Mock)!`);
-      
-      // Simulando retorno do Back
-      const mockBackendResponse = { weaponType: "shotgun" }; 
-      
-      if (mockBackendResponse.weaponType === "pistol") {
-        this.equipWeapon(player, "pistol");
-      } else if (mockBackendResponse.weaponType === "rifle") {
-        this.equipWeapon(player, "rifle");
-      } else if (mockBackendResponse.weaponType === "shotgun") {
-        this.equipWeapon(player, "shotgun");
+  private sendInput(controlState: ControlState) {
+    if (this.requestInFlight) {
+      return;
+    }
+
+    const openChest = this.pendingOpenChest || controlState.openChest;
+    this.pendingOpenChest = false;
+    this.requestInFlight = true;
+
+    submitPlayerInput({
+      playerId: this.playerId,
+      moveX: controlState.moveX * INPUT_MOVE_UNITS,
+      moveY: controlState.moveY * INPUT_MOVE_UNITS,
+      isAttacking: controlState.isAttacking,
+      inputSequence: ++this.inputSequence,
+      openChest,
+      aimX: controlState.aimX,
+      aimY: controlState.aimY,
+    })
+      .then((state) => {
+        this.applyGameState(state);
+      })
+      .catch((error) => {
+        if (openChest) {
+          this.pendingOpenChest = true;
+        }
+        this.updateStatus(`Backend sem resposta: ${error.message || error}`);
+        console.error("Erro ao sincronizar input com o backend:", error);
+      })
+      .then(() => {
+        this.requestInFlight = false;
+      });
+  }
+
+  private applyGameState(state: GameState) {
+    this.renderChests(state.chests || []);
+    this.renderPlayers(state.players || []);
+    this.updateStatus(
+      `Backend ok | tick ${state.tick || 0} | baus ${(state.chests || []).length} | jogadores ${
+        (state.players || []).length
+      }`
+    );
+  }
+
+  private renderPlayers(players: PlayerSnapshot[]) {
+    const seen: { [playerId: string]: boolean } = {};
+
+    for (let i = 0; i < players.length; i++) {
+      const snapshot = players[i];
+      if (!snapshot.playerId) {
+        continue;
+      }
+
+      seen[snapshot.playerId] = true;
+
+      if (snapshot.playerId === this.playerId) {
+        this.applyPlayerSnapshot(this.player, snapshot);
+      } else {
+        this.applyRemotePlayerSnapshot(snapshot);
+      }
+    }
+
+    for (const playerId in this.remotePlayersById) {
+      if (!seen[playerId]) {
+        this.remotePlayersById[playerId].destroy();
+        delete this.remotePlayersById[playerId];
       }
     }
   }
+
+  private applyPlayerSnapshot(player: Player, snapshot: PlayerSnapshot) {
+    const position = this.serverToWorld(snapshot.x || 0, snapshot.y || 0);
+    player.setPosition(position.x, position.y);
+    player.setAlpha(snapshot.isAlive === false ? 0.45 : 1);
+
+    if (snapshot.weapon) {
+      this.equipWeapon(player, snapshot.weapon);
+    }
+
+    if (player.weaponSprite) {
+      player.weaponSprite.setPosition(player.x, player.y);
+    }
+  }
+
+  private applyRemotePlayerSnapshot(snapshot: PlayerSnapshot) {
+    const position = this.serverToWorld(snapshot.x || 0, snapshot.y || 0);
+    let remotePlayer = this.remotePlayersById[snapshot.playerId];
+
+    if (!remotePlayer) {
+      remotePlayer = this.physics.add.sprite(position.x, position.y, "walk_south");
+      remotePlayer.setDepth(9);
+      remotePlayer.setTint(0x66aaff);
+      this.remotePlayersById[snapshot.playerId] = remotePlayer;
+    }
+
+    remotePlayer.setPosition(position.x, position.y);
+    remotePlayer.setAlpha(snapshot.isAlive === false ? 0.45 : 1);
+  }
+
+  private renderChests(chests: ChestSnapshot[]) {
+    const seen: { [chestId: string]: boolean } = {};
+
+    for (let i = 0; i < chests.length; i++) {
+      const chest = chests[i];
+      if (!chest.chestId) {
+        continue;
+      }
+
+      const position = this.serverToWorld(chest.x || 0, chest.y || 0);
+      let chestSprite = this.chestSpritesById[chest.chestId];
+
+      if (!chestSprite) {
+        chestSprite = this.chestsGroup.create(position.x, position.y, "bau_pixel", 0);
+        chestSprite.chestId = chest.chestId;
+        this.chestSpritesById[chest.chestId] = chestSprite;
+      }
+
+      chestSprite.setPosition(position.x, position.y);
+      chestSprite.setFrame(chest.isOpened ? 1 : 0);
+      chestSprite.refreshBody();
+      seen[chest.chestId] = true;
+    }
+
+    for (const chestId in this.chestSpritesById) {
+      if (!seen[chestId]) {
+        this.chestSpritesById[chestId].destroy();
+        delete this.chestSpritesById[chestId];
+      }
+    }
+  }
+
+  private configureCoordinateMapping(map: Phaser.Tilemaps.Tilemap) {
+    this.mapCenterX = map.widthInPixels / 2;
+    this.mapCenterY = map.heightInPixels / 2;
+    this.serverToWorldScale =
+      (Math.min(map.widthInPixels, map.heightInPixels) / (SERVER_ARENA_HALF_SIZE * 2)) * 0.9;
+  }
+
+  private serverToWorld(x: number, y: number) {
+    return {
+      x: this.mapCenterX + x * this.serverToWorldScale,
+      y: this.mapCenterY + y * this.serverToWorldScale,
+    };
+  }
+
+  private equipWeapon(player: Player, weaponType: string) {
+    if (!player.weaponSprite) {
+      player.weaponSprite = this.add.sprite(player.x, player.y, `${weaponType}_south`);
+      player.weaponSprite.setDepth(11);
+    } else {
+      player.weaponSprite.setTexture(`${weaponType}_south`);
+    }
+
+    player.currentWeaponType = weaponType;
+    player.weaponSprite.setVisible(true);
+  }
+
+  private openChest() {
+    this.pendingOpenChest = true;
+  }
+
+  private updateStatus(message: string) {
+    updateFrontendStatus(message);
+
+    if (this.statusText) {
+      this.statusText.setText(message);
+    }
+  }
 }
+
+const loadOrCreatePlayerId = (): string => {
+  try {
+    const existing = window.localStorage.getItem(PLAYER_ID_STORAGE_KEY);
+    if (existing) {
+      return existing;
+    }
+
+    const generated = `player-${Date.now().toString(36)}-${Math.floor(Math.random() * 100000)}`;
+    window.localStorage.setItem(PLAYER_ID_STORAGE_KEY, generated);
+    return generated;
+  } catch (_error) {
+    return `player-${Date.now().toString(36)}-${Math.floor(Math.random() * 100000)}`;
+  }
+};
+
 const config = {
   type: Phaser.AUTO,
   backgroundColor: "#86b1b1",
@@ -174,9 +327,10 @@ const config = {
   physics: {
     default: "arcade",
     arcade: {
-      gravity: { y: 0 },
+      gravity: { x: 0, y: 0 },
     },
   },
 };
 
+updateFrontendStatus("Inicializando Phaser...");
 new Phaser.Game(config);

@@ -132,6 +132,9 @@ func (s *Server) StreamMatch(_ context.Context, input *matchv1.PlayerInput) (*ma
 	if s.match == nil {
 		s.match = newMatchState()
 	}
+	if s.match.matchEnded {
+		s.match = newMatchState()
+	}
 
 	match := s.match
 	player := match.ensurePlayer(playerID)
