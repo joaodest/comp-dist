@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { createPlayer, loadPlayerSprites, loadBulletSprites, WEAPON_STATS, Player } from "./player";
 import { createControls, configControls } from "./controls";
+import { createFogCircle, updateFogCircle, checkFogCollision, FogCircle } from "./zone";
 
 export default class Demo extends Phaser.Scene {
   player: any;
@@ -10,7 +11,7 @@ export default class Demo extends Phaser.Scene {
   mapLayers: any[] = [];
   weaponHudIcon: Phaser.GameObjects.Image | null = null;
   weaponHudLabel: Phaser.GameObjects.Text | null = null;
-  // Variável para guardar o grupo de baús
+  fog!: FogCircle;
 
   constructor() {
     super("demo");
@@ -45,6 +46,9 @@ export default class Demo extends Phaser.Scene {
 
     // Layers usam múltiplos tilesets — passa todos de uma vez
     const allTilesets = [tsMount, tsWood, tsTiles, tsPm];
+
+    //zona -- viável mudar valores dps
+    this.fog = createFogCircle(this, 1360, 768, 1000, 0.5);
     
     // Nomes exatos das layers do map.json
     const layer1 = map.createLayer("Tile Layer 1", allTilesets as Phaser.Tilemaps.Tileset[], 0, 0);
@@ -155,6 +159,10 @@ export default class Demo extends Phaser.Scene {
     // Processamento de inputs, movimento e sincronização da arma
     configControls(this.player, this.controls, this);
 
+    // 1. Verifica se o player entrou/saiu da zona de perigo (Névoa)
+    if (this.fog && this.player) {
+      checkFogCollision(this.fog, this.player.x, this.player.y);
+    }
     // Limpa projéteis que sairam dos limites do mapa (evita vazamento)
     const cam = this.cameras.main;
     const bounds = cam.getBounds();
