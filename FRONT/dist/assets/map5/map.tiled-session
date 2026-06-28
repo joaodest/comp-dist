@@ -1,0 +1,37 @@
+{
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "map.tmx": {
+            "scale": 0.33,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 1568.181818181818,
+                "y": 522.7272727272727
+            }
+        },
+        "map.tmx#mountain": {
+            "scaleInDock": 1
+        },
+        "map.tmx#tiles": {
+            "scaleInDock": 1
+        },
+        "map.tmx#wood_tileset": {
+            "scaleInDock": 1
+        }
+    },
+    "last.imagePath": "/home/ekko/Documents/map5",
+    "map.lastUsedFormat": "tmx",
+    "openFiles": [
+    ],
+    "project": "map.tiled-project",
+    "recentFiles": [
+        "map.tmx"
+    ],
+    "tileset.embedInMap": true
+}
