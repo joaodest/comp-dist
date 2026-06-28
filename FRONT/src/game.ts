@@ -8,6 +8,8 @@ export default class Demo extends Phaser.Scene {
   chestsGroup: any;
   projectilesGroup: any;
   mapLayers: any[] = [];
+  weaponHudIcon: Phaser.GameObjects.Image | null = null;
+  weaponHudLabel: Phaser.GameObjects.Text | null = null;
   // Variável para guardar o grupo de baús
 
   constructor() {
@@ -123,6 +125,24 @@ export default class Demo extends Phaser.Scene {
     // Adiciona colisão do jogador com os baús, chamando a função 'openChest'
     this.physics.add.collider(this.player, this.chestsGroup, this.openChest, undefined, this);
 
+    // HUD: ícone da arma equipada no canto superior esquerdo (fixo na câmera)
+    this.weaponHudIcon = this.add
+      .image(40, 40, "pistol_south", 0)
+      .setScrollFactor(0)
+      .setDepth(1000)
+      .setScale(1.2)
+      .setVisible(false);
+    this.weaponHudLabel = this.add
+      .text(75, 28, "", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        stroke: "#000000",
+        strokeThickness: 3,
+      })
+      .setScrollFactor(0)
+      .setDepth(1000);
+
     // Projéteis colidem com as layers do mapa e são destruídos
     this.mapLayers.forEach((layer) => {
       this.physics.add.collider(this.projectilesGroup, layer, (bullet: any) => {
@@ -219,6 +239,13 @@ export default class Demo extends Phaser.Scene {
     player.currentWeaponType = weaponType;
     player.weaponSprite.setVisible(true);
     console.log(`Jogador equipou a arma: ${weaponType}`);
+
+    // Atualiza o HUD da arma
+    if (this.weaponHudIcon && this.weaponHudLabel) {
+      this.weaponHudIcon.setTexture(`${weaponType}_south`, 0);
+      this.weaponHudIcon.setVisible(true);
+      this.weaponHudLabel.setText(weaponType.toUpperCase());
+    }
   }
 
   // Função disparada quando o jogador colide com o baú
