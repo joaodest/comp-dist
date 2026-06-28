@@ -1,11 +1,13 @@
 import * as Phaser from "phaser";
-import { createPlayer, loadPlayerSprites } from "./player";
+import { createPlayer, loadPlayerSprites, loadBulletSprites, WEAPON_STATS, Player } from "./player";
 import { createControls, configControls } from "./controls";
 
 export default class Demo extends Phaser.Scene {
   player: any;
   controls: any;
   chestsGroup: any;
+  projectilesGroup: any;
+  mapLayers: any[] = [];
   // Variável para guardar o grupo de baús
 
   constructor() {
@@ -26,6 +28,8 @@ export default class Demo extends Phaser.Scene {
     
     // Carregamento do jogador (com suas imagens divididas e armas)
     loadPlayerSprites(this);
+    // Carregamento das texturas de projétil (pistol, rifle, shotgun reusa pistol)
+    loadBulletSprites(this);
   }
 
   create() {
@@ -47,6 +51,12 @@ export default class Demo extends Phaser.Scene {
     // Ativa colisão nas tiles marcadas com { collider: true } no map.json
     if (layer1) layer1.setCollisionByProperty({ collider: true });
     if (layer2) layer2.setCollisionByProperty({ collider: true });
+    this.mapLayers = [layer1, layer2].filter(Boolean);
+
+    // Grupo de projéteis (balas disparadas pelos jogadores)
+    this.projectilesGroup = this.physics.add.group({
+      runChildUpdate: false,
+    });
     
     // cria um grupo estático para os baús
     this.chestsGroup = this.physics.add.staticGroup();
@@ -112,11 +122,74 @@ export default class Demo extends Phaser.Scene {
 
     // Adiciona colisão do jogador com os baús, chamando a função 'openChest'
     this.physics.add.collider(this.player, this.chestsGroup, this.openChest, undefined, this);
+
+    // Projéteis colidem com as layers do mapa e são destruídos
+    this.mapLayers.forEach((layer) => {
+      this.physics.add.collider(this.projectilesGroup, layer, (bullet: any) => {
+        bullet.destroy();
+      });
+    });
   }
 
   update() {
     // Processamento de inputs, movimento e sincronização da arma
     configControls(this.player, this.controls, this);
+
+    // Limpa projéteis que sairam dos limites do mapa (evita vazamento)
+    const cam = this.cameras.main;
+    const bounds = cam.getBounds();
+    this.projectilesGroup.getChildren().forEach((b: any) => {
+      if (
+        b.x < bounds.x - 50 ||
+        b.x > bounds.x + bounds.width + 50 ||
+        b.y < bounds.y - 50 ||
+        b.y > bounds.y + bounds.height + 50
+      ) {
+        b.destroy();
+      }
+    });
+  }
+
+  // ====================================================================
+  // Sistema de projéteis
+  // ====================================================================
+  fireWeapon(player: Player, angle: number) {
+    if (!player.currentWeaponType) return;
+    const stats = WEAPON_STATS[player.currentWeaponType];
+    if (!stats) return;
+
+    const now = this.time.now;
+    if (player.lastFiredAt && now - player.lastFiredAt < stats.cooldownMs) return;
+    player.lastFiredAt = now;
+
+    // Spawn de cada projétil (shotgun dispara varios em leque)
+    for (let i = 0; i < stats.pellets; i++) {
+      // Distribui o spread em torno do angulo principal
+      const offset =
+        stats.pellets === 1
+          ? (Math.random() - 0.5) * stats.spreadRad
+          : ((i - (stats.pellets - 1) / 2) / Math.max(stats.pellets - 1, 1)) * stats.spreadRad;
+      const theta = angle + offset;
+
+      // Spawn ligeiramente à frente do player pra não colidir com ele
+      const spawnDist = 24;
+      const x = player.x + Math.cos(theta) * spawnDist;
+      const y = player.y + Math.sin(theta) * spawnDist;
+
+      const bullet = this.projectilesGroup.create(x, y, stats.bulletTexture);
+      bullet.setDepth(9); // abaixo do player (10)
+      bullet.setRotation(theta);
+      bullet.setScale(0.05); // sprites de bala são gigantes (2720x800)
+      bullet.setVelocity(Math.cos(theta) * stats.speed, Math.sin(theta) * stats.speed);
+      bullet.damage = stats.damage;
+      bullet.ownerId = (player as any).playerId || "local";
+      bullet.weaponType = player.currentWeaponType;
+
+      // Auto-destroy por lifespan (caso não bata em nada)
+      this.time.delayedCall(stats.lifespanMs, () => {
+        if (bullet && bullet.active) bullet.destroy();
+      });
+    }
   }
 
   // Função auxiliar para criar os baús
