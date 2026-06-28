@@ -1,3 +1,4 @@
+import * as Phaser from "phaser";
 import { Player } from "./player";
 
 export interface Controls {
@@ -82,19 +83,10 @@ export const configControls = (player: Player, controls: Controls, scene: any): 
   // =========================================================
   if (!player.currentWeaponType) return;
 
-  const wantsFire =
-    controls.fireKey.isDown || scene.input.activePointer.isDown;
+  const wantsFire = controls.fireKey.isDown || scene.input.activePointer.isDown;
   if (!wantsFire) return;
 
-  // Se tem mouse ativo, mira no cursor; senão usa o facing do player
-  const pointer = scene.input.activePointer;
-  let angle: number;
-  if (pointer.isDown) {
-    const world = pointer.positionToCamera(scene.cameras.main) as Phaser.Math.Vector2;
-    angle = Math.atan2(world.y - player.y, world.x - player.x);
-  } else {
-    angle = FACING_TO_ANGLE[player.facing || "south"];
-  }
-
+  // Mira sempre na direção que o personagem está virado
+  const angle = FACING_TO_ANGLE[player.facing || "south"];
   scene.fireWeapon(player, angle);
 };
