@@ -27,6 +27,18 @@ export const loadPlayerSprites = (scene: Phaser.Scene): void => {
   scene.load.spritesheet("pistol_right", "./assets/guns/PistolsD.png", config);
   scene.load.spritesheet("pistol_left", "./assets/guns/PistolsE.png", config);
   scene.load.spritesheet("pistol_south", "./assets/guns/PistolsF.png", config);
+
+  // 4. Sprites da Arma (Rifle)
+  scene.load.spritesheet("rifle_back", "./assets/guns/AssaultRifleC.png", config);
+  scene.load.spritesheet("rifle_right", "./assets/guns/AssaultRifleD.png", config);
+  scene.load.spritesheet("rifle_left", "./assets/guns/AssaultRifleE.png", config);
+  scene.load.spritesheet("rifle_south", "./assets/guns/AssaultRifleF.png", config);
+  
+  // 5. Sprites da Arma (Shotgun)
+  scene.load.spritesheet("shotgun_back", "./assets/guns/ShotgunC.png", config);
+  scene.load.spritesheet("shotgun_right", "./assets/guns/ShotgunD.png", config);
+  scene.load.spritesheet("shotgun_left", "./assets/guns/ShotgunE.png", config);
+  scene.load.spritesheet("shotgun_south", "./assets/guns/ShotgunF.png", config);
 };
 
 export const createPlayer = (scene: Phaser.Scene): Player => {
@@ -52,9 +64,22 @@ export const createPlayerAnimations = (scene: Phaser.Scene, player: Player): voi
   scene.anims.create({ key: "pose_left", frames: scene.anims.generateFrameNumbers("pose_left", { start: 0, end: 7 }), frameRate: 10, repeat: -1 });
   scene.anims.create({ key: "pose_south", frames: scene.anims.generateFrameNumbers("pose_south", { start: 0, end: 8 }), frameRate: 10, repeat: -1 });
 
-  // --- ANIMAÇÕES DA ARMA ---
+  // --- ANIMAÇÕES DA Pistola ---
   scene.anims.create({ key: "pistol_back", frames: scene.anims.generateFrameNumbers("pistol_back", { start: 0, end: 8 }), frameRate: 10, repeat: -1 });
   scene.anims.create({ key: "pistol_right", frames: scene.anims.generateFrameNumbers("pistol_right", { start: 0, end: 7 }), frameRate: 10, repeat: -1 });
   scene.anims.create({ key: "pistol_left", frames: scene.anims.generateFrameNumbers("pistol_left", { start: 0, end: 7 }), frameRate: 10, repeat: -1 });
   scene.anims.create({ key: "pistol_south", frames: scene.anims.generateFrameNumbers("pistol_south", { start: 0, end: 8 }), frameRate: 10, repeat: -1 });
-};
+
+  // --- ANIMAÇÕES DO RIFLE ---
+  scene.anims.create({ key: "rifle_back", frames: scene.anims.generateFrameNumbers("rifle_back", { start: 0, end: 8 }), frameRate: 10, repeat: -1 });
+  scene.anims.create({ key: "rifle_right", frames: scene.anims.generateFrameNumbers("rifle_right", { start: 0, end: 7 }), frameRate: 10, repeat: -1 });
+  scene.anims.create({ key: "rifle_left", frames: scene.anims.generateFrameNumbers("rifle_left", { start: 0, end: 7 }), frameRate: 10, repeat: -1 });
+  scene.anims.create({ key: "rifle_south", frames: scene.anims.generateFrameNumbers("rifle_south", { start: 0, end: 8 }), frameRate: 10, repeat: -1 });
+
+  // --- ANIMAÇÕES DO SHOTGUN ---
+  scene.anims.create({ key: "shotgun_back", frames: scene.anims.generateFrameNumbers("shotgun_back", { start: 0, end: 8 }), frameRate: 10, repeat: -1 });
+  scene.anims.create({ key: "shotgun_right", frames: scene.anims.generateFrameNumbers("shotgun_right", { start: 0, end: 7 }), frameRate: 10, repeat: -1 });
+  scene.anims.create({ key: "shotgun_left", frames: scene.anims.generateFrameNumbers("shotgun_left", { start: 0, end: 7 }), frameRate: 10, repeat: -1 });
+  scene.anims.create({ key: "shotgun_south", frames: scene.anims.generateFrameNumbers("shotgun_south", { start: 0, end: 8 }), frameRate: 10, repeat: -1 });
+
+}

@@ -153,7 +153,7 @@ export default class Demo extends Phaser.Scene {
       console.log(`Baú ${chest.chestId} aberto (Mock)!`);
       
       // Simulando retorno do Back
-      const mockBackendResponse = { weaponType: "pistol" }; 
+      const mockBackendResponse = { weaponType: "shotgun" }; 
       
       if (mockBackendResponse.weaponType === "pistol") {
         this.equipWeapon(player, "pistol");
