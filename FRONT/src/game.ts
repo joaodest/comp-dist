@@ -224,19 +224,17 @@ export default class Demo extends Phaser.Scene {
   // Função disparada quando o jogador colide com o baú
   openChest(player: any, chest: any) {
     if (chest.frame.name === 0) {
-      chest.setFrame(1); 
+      chest.setFrame(1);
       console.log(`Baú ${chest.chestId} aberto (Mock)!`);
-      
-      // Simulando retorno do Back
-      const mockBackendResponse = { weaponType: "shotgun" }; 
-      
-      if (mockBackendResponse.weaponType === "pistol") {
-        this.equipWeapon(player, "pistol");
-      } else if (mockBackendResponse.weaponType === "rifle") {
-        this.equipWeapon(player, "rifle");
-      } else if (mockBackendResponse.weaponType === "shotgun") {
-        this.equipWeapon(player, "shotgun");
-      }
+
+      // Simulando retorno do Back: sorteia uma arma aleatoria entre as 3
+      const weapons = ["pistol", "rifle", "shotgun"];
+      const mockBackendResponse = {
+        weaponType: weapons[Math.floor(Math.random() * weapons.length)],
+      };
+      console.log(`Arma sorteada: ${mockBackendResponse.weaponType}`);
+
+      this.equipWeapon(player, mockBackendResponse.weaponType);
     }
   }
 }
