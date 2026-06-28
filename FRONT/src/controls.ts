@@ -21,7 +21,12 @@ const FACING_TO_ANGLE: Record<string, number> = {
   back: -Math.PI / 2,
 };
 
-export const configControls = (player: Player, controls: Controls, scene: any): void => {
+// Cena que expõe o sistema de tiro definido em game.ts.
+export type GameScene = Phaser.Scene & {
+  fireWeapon(player: Player, angle: number): void;
+};
+
+export const configControls = (player: Player, controls: Controls, scene: GameScene): void => {
   player.setVelocity(0, 0);
   const speed = 200;
 

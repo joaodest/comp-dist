@@ -208,8 +208,12 @@ export default class Demo extends Phaser.Scene {
       bullet.setDepth(9); // abaixo do player (10)
       bullet.setRotation(theta);
       bullet.setScale(0.01); // sprites de bala são gigantes (2720x800)
-      // Hitbox menor que a textura
-      bullet.body.setSize(40, 40);
+      // Hitbox menor que a textura, centralizada no sprite
+      const hitboxSize = 40;
+      const offsetX = (bullet.width - hitboxSize) / 2;
+      const offsetY = (bullet.height - hitboxSize) / 2;
+      bullet.body.setSize(hitboxSize, hitboxSize);
+      bullet.body.setOffset(offsetX, offsetY);
       bullet.setVelocity(Math.cos(theta) * stats.speed, Math.sin(theta) * stats.speed);
       bullet.damage = stats.damage;
       bullet.ownerId = (player as any).playerId || "local";
