@@ -1,40 +1,62 @@
 import { Player } from "./player";
 
-export const createControls = (scene: Phaser.Scene) => {
-  return scene.input.keyboard.createCursorKeys();
+export interface Controls {
+  cursors: Phaser.Types.Input.Keyboard.CursorKeys;
+  fireKey: Phaser.Input.Keyboard.Key;
+}
+
+export const createControls = (scene: Phaser.Scene): Controls => {
+  return {
+    cursors: scene.input.keyboard!.createCursorKeys(),
+    fireKey: scene.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
+  };
 };
 
-export const configControls = (player: Player, controls: any, scene: Phaser.Scene): void => {
+// Mapa de direção (facing) -> angulo em radianos
+const FACING_TO_ANGLE: Record<string, number> = {
+  right: 0,
+  south: Math.PI / 2,
+  left: Math.PI,
+  back: -Math.PI / 2,
+};
+
+export const configControls = (player: Player, controls: Controls, scene: any): void => {
   player.setVelocity(0, 0);
   const speed = 200;
 
   // Se tiver arma, usa a "pose", senão usa o "walk" normal
   const playerAnimPrefix = player.currentWeaponType ? "pose" : "walk";
-  let currentDirection = ""; 
+  let currentDirection = "";
+  const cursors = controls.cursors;
 
-  if (controls.right.isDown) {
+  if (cursors.right.isDown) {
     player.setFlipX(false);
     player.anims.play(`${playerAnimPrefix}_right`, true);
     player.setVelocityX(speed);
     currentDirection = "right";
-  } else if (controls.left.isDown) {
+  } else if (cursors.left.isDown) {
     player.setFlipX(false);
     player.anims.play(`${playerAnimPrefix}_left`, true);
     player.setVelocityX(-speed);
     currentDirection = "left";
-  } else if (controls.up.isDown) {
+  } else if (cursors.up.isDown) {
     player.setFlipX(false);
-    player.anims.play(`${playerAnimPrefix}_back`, true); 
+    player.anims.play(`${playerAnimPrefix}_back`, true);
     player.setVelocityY(-speed);
     currentDirection = "back";
-  } else if (controls.down.isDown) {
+  } else if (cursors.down.isDown) {
     player.setFlipX(false);
     player.anims.play(`${playerAnimPrefix}_south`, true);
     player.setVelocityY(speed);
     currentDirection = "south";
   } else {
     player.anims.stop();
-    player.setFrame(0); 
+    player.setFrame(0);
+  }
+
+  // Mantem o facing do jogador (usado para apontar o tiro quando parado)
+  if (currentDirection !== "") {
+    player.facing = currentDirection as Player["facing"];
   }
 
   // =========================================================
@@ -54,4 +76,25 @@ export const configControls = (player: Player, controls: any, scene: Phaser.Scen
       player.weaponSprite.setFrame(0);
     }
   }
+
+  // =========================================================
+  // INPUT DE TIRO (SPACE ou click do mouse)
+  // =========================================================
+  if (!player.currentWeaponType) return;
+
+  const wantsFire =
+    controls.fireKey.isDown || scene.input.activePointer.isDown;
+  if (!wantsFire) return;
+
+  // Se tem mouse ativo, mira no cursor; senão usa o facing do player
+  const pointer = scene.input.activePointer;
+  let angle: number;
+  if (pointer.isDown) {
+    const world = pointer.positionToCamera(scene.cameras.main) as Phaser.Math.Vector2;
+    angle = Math.atan2(world.y - player.y, world.x - player.x);
+  } else {
+    angle = FACING_TO_ANGLE[player.facing || "south"];
+  }
+
+  scene.fireWeapon(player, angle);
 };
