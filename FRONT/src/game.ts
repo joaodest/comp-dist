@@ -1,12 +1,17 @@
 import * as Phaser from "phaser";
-import { createPlayer, loadPlayerSprites } from "./player";
+import { createPlayer, loadPlayerSprites, loadBulletSprites, WEAPON_STATS, Player } from "./player";
 import { createControls, configControls } from "./controls";
+import { createFogCircle, updateFogCircle, checkFogCollision, FogCircle } from "./zone";
 
 export default class Demo extends Phaser.Scene {
   player: any;
   controls: any;
   chestsGroup: any;
-  // Variável para guardar o grupo de baús
+  projectilesGroup: any;
+  mapLayers: any[] = [];
+  weaponHudIcon: Phaser.GameObjects.Image | null = null;
+  weaponHudLabel: Phaser.GameObjects.Text | null = null;
+  fog!: FogCircle;
 
   constructor() {
     super("demo");
@@ -26,6 +31,8 @@ export default class Demo extends Phaser.Scene {
     
     // Carregamento do jogador (com suas imagens divididas e armas)
     loadPlayerSprites(this);
+    // Carregamento das texturas de projétil (pistol, rifle, shotgun reusa pistol)
+    loadBulletSprites(this);
   }
 
   create() {
@@ -39,6 +46,9 @@ export default class Demo extends Phaser.Scene {
 
     // Layers usam múltiplos tilesets — passa todos de uma vez
     const allTilesets = [tsMount, tsWood, tsTiles, tsPm];
+
+    //zona -- viável mudar valores dps
+    this.fog = createFogCircle(this, 1360, 768, 1000, 0.5);
     
     // Nomes exatos das layers do map.json
     const layer1 = map.createLayer("Tile Layer 1", allTilesets as Phaser.Tilemaps.Tileset[], 0, 0);
@@ -47,6 +57,12 @@ export default class Demo extends Phaser.Scene {
     // Ativa colisão nas tiles marcadas com { collider: true } no map.json
     if (layer1) layer1.setCollisionByProperty({ collider: true });
     if (layer2) layer2.setCollisionByProperty({ collider: true });
+    this.mapLayers = [layer1, layer2].filter(Boolean);
+
+    // Grupo de projéteis (balas disparadas pelos jogadores)
+    this.projectilesGroup = this.physics.add.group({
+      runChildUpdate: false,
+    });
     
     // cria um grupo estático para os baús
     this.chestsGroup = this.physics.add.staticGroup();
@@ -112,11 +128,102 @@ export default class Demo extends Phaser.Scene {
 
     // Adiciona colisão do jogador com os baús, chamando a função 'openChest'
     this.physics.add.collider(this.player, this.chestsGroup, this.openChest, undefined, this);
+
+    // HUD: ícone da arma equipada no canto superior esquerdo (fixo na câmera)
+    this.weaponHudIcon = this.add
+      .image(40, 40, "pistol_south", 0)
+      .setScrollFactor(0)
+      .setDepth(1000)
+      .setScale(1.2)
+      .setVisible(false);
+    this.weaponHudLabel = this.add
+      .text(75, 28, "", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        color: "#ffffff",
+        stroke: "#000000",
+        strokeThickness: 3,
+      })
+      .setScrollFactor(0)
+      .setDepth(1000);
+
+    // Projéteis colidem com as layers do mapa e são destruídos
+    this.mapLayers.forEach((layer) => {
+      this.physics.add.collider(this.projectilesGroup, layer, (bullet: any) => {
+        bullet.destroy();
+      });
+    });
   }
 
   update() {
     // Processamento de inputs, movimento e sincronização da arma
     configControls(this.player, this.controls, this);
+
+    // 1. Verifica se o player entrou/saiu da zona de perigo (Névoa)
+    if (this.fog && this.player) {
+      checkFogCollision(this.fog, this.player.x, this.player.y);
+    }
+    // Limpa projéteis que sairam dos limites do mapa (evita vazamento)
+    const cam = this.cameras.main;
+    const bounds = cam.getBounds();
+    this.projectilesGroup.getChildren().forEach((b: any) => {
+      if (
+        b.x < bounds.x - 50 ||
+        b.x > bounds.x + bounds.width + 50 ||
+        b.y < bounds.y - 50 ||
+        b.y > bounds.y + bounds.height + 50
+      ) {
+        b.destroy();
+      }
+    });
+  }
+
+  // ====================================================================
+  // Sistema de projéteis
+  // ====================================================================
+  fireWeapon(player: Player, angle: number) {
+    if (!player.currentWeaponType) return;
+    const stats = WEAPON_STATS[player.currentWeaponType];
+    if (!stats) return;
+
+    const now = this.time.now;
+    if (player.lastFiredAt && now - player.lastFiredAt < stats.cooldownMs) return;
+    player.lastFiredAt = now;
+
+    // Spawn de cada projétil (shotgun dispara varios em leque)
+    for (let i = 0; i < stats.pellets; i++) {
+      // Distribui o spread em torno do angulo principal
+      const offset =
+        stats.pellets === 1
+          ? (Math.random() - 0.5) * stats.spreadRad
+          : ((i - (stats.pellets - 1) / 2) / Math.max(stats.pellets - 1, 1)) * stats.spreadRad;
+      const theta = angle + offset;
+
+      // Spawn ligeiramente à frente do player pra não colidir com ele
+      const spawnDist = 24;
+      const x = player.x + Math.cos(theta) * spawnDist;
+      const y = player.y + Math.sin(theta) * spawnDist;
+
+      const bullet = this.projectilesGroup.create(x, y, stats.bulletTexture);
+      bullet.setDepth(9); // abaixo do player (10)
+      bullet.setRotation(theta);
+      bullet.setScale(0.01); // sprites de bala são gigantes (2720x800)
+      // Hitbox menor que a textura, centralizada no sprite
+      const hitboxSize = 40;
+      const offsetX = (bullet.width - hitboxSize) / 2;
+      const offsetY = (bullet.height - hitboxSize) / 2;
+      bullet.body.setSize(hitboxSize, hitboxSize);
+      bullet.body.setOffset(offsetX, offsetY);
+      bullet.setVelocity(Math.cos(theta) * stats.speed, Math.sin(theta) * stats.speed);
+      bullet.damage = stats.damage;
+      bullet.ownerId = (player as any).playerId || "local";
+      bullet.weaponType = player.currentWeaponType;
+
+      // Auto-destroy por lifespan (caso não bata em nada)
+      this.time.delayedCall(stats.lifespanMs, () => {
+        if (bullet && bullet.active) bullet.destroy();
+      });
+    }
   }
 
   // Função auxiliar para criar os baús
@@ -144,24 +251,29 @@ export default class Demo extends Phaser.Scene {
     player.currentWeaponType = weaponType;
     player.weaponSprite.setVisible(true);
     console.log(`Jogador equipou a arma: ${weaponType}`);
+
+    // Atualiza o HUD da arma
+    if (this.weaponHudIcon && this.weaponHudLabel) {
+      this.weaponHudIcon.setTexture(`${weaponType}_south`, 0);
+      this.weaponHudIcon.setVisible(true);
+      this.weaponHudLabel.setText(weaponType.toUpperCase());
+    }
   }
 
   // Função disparada quando o jogador colide com o baú
   openChest(player: any, chest: any) {
     if (chest.frame.name === 0) {
-      chest.setFrame(1); 
+      chest.setFrame(1);
       console.log(`Baú ${chest.chestId} aberto (Mock)!`);
-      
-      // Simulando retorno do Back
-      const mockBackendResponse = { weaponType: "shotgun" }; 
-      
-      if (mockBackendResponse.weaponType === "pistol") {
-        this.equipWeapon(player, "pistol");
-      } else if (mockBackendResponse.weaponType === "rifle") {
-        this.equipWeapon(player, "rifle");
-      } else if (mockBackendResponse.weaponType === "shotgun") {
-        this.equipWeapon(player, "shotgun");
-      }
+
+      // Simulando retorno do Back: sorteia uma arma aleatoria entre as 3
+      const weapons = ["pistol", "rifle", "shotgun"];
+      const mockBackendResponse = {
+        weaponType: weapons[Math.floor(Math.random() * weapons.length)],
+      };
+      console.log(`Arma sorteada: ${mockBackendResponse.weaponType}`);
+
+      this.equipWeapon(player, mockBackendResponse.weaponType);
     }
   }
 }
