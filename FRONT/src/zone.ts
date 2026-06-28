@@ -1,5 +1,5 @@
 /**
- * fog.ts
+ * zone.ts
  *
  * Névoa avermelhada fora de um círculo, usando GeometryMask invertido.
  *
@@ -8,10 +8,9 @@
  *
  * Uso em update() para seguir o player:
  *   updateFogCircle(this.fog, this.player.x, this.player.y, 200);
- * 
- * 
- * // verifica se esta na zona de perigo e emite um (log use F12 para ver)
-    checkFogCollision(this.fog, this.player.x, this.player.y);
+ *
+ * Verifica se o player está na zona de perigo e emite um log (F12 para ver):
+ *   checkFogCollision(this.fog, this.player.x, this.player.y);
  */
 
 
@@ -19,10 +18,10 @@
 export interface FogCircle {
   overlay:  Phaser.GameObjects.Graphics;
   mask:     Phaser.GameObjects.Graphics;
-  cx:       number;   // ← adicione
-  cy:       number;   // ← adicione
-  diameter: number;   // ← adicione
-  inFog:    boolean;  // ← adicione
+  cx:       number;
+  cy:       number;
+  diameter: number;
+  inFog:    boolean;
 }
 // Tamanho total do mapa em pixels — ajuste se mudar o mapa
 const MAP_W = 2720;
@@ -65,10 +64,10 @@ export const createFogCircle = (
   return {
     overlay,
     mask: maskShape,
-    cx,        // ← adicione
-    cy,        // ← adicione
-    diameter,  // ← adicione
-    inFog: false, // ← adicione
+    cx,
+    cy,
+    diameter,
+    inFog: false,
   };
 };
 
@@ -86,6 +85,11 @@ export const updateFogCircle = (
   fog.mask.clear();
   fog.mask.fillStyle(0xffffff);
   fog.mask.fillCircle(cx, cy, radius);
+
+  // Mantem o estado em sincronia para checkFogCollision usar o circulo atual
+  fog.cx = cx;
+  fog.cy = cy;
+  fog.diameter = diameter;
 };
 
 
